@@ -111,19 +111,35 @@ export default function Dashboard() {
 
     const goldAmt = currentGoldRate > 0 ? parseFloat((scheme.monthly_amount / currentGoldRate).toFixed(4)) : 0;
 
-    const { error } = await supabase.from('payments').insert([{ 
-      scheme_id: scheme.id, 
-      user_id: user.id, 
-      month_number: selectedMonth, 
-      amount: scheme.monthly_amount,
-      gold_rate: currentGoldRate,
-      gold_amount: goldAmt,
-      status: 'pending_approval',
-      payment_method: paymentMethod,
-      screenshot_url: screenshot_url
-    }]);
+    const existingPayment = payments.find(p => p.month_number === selectedMonth);
+    let submitError;
 
-    if (error) alert('Error submitting payment: ' + error.message);
+    if (existingPayment && existingPayment.status === 'rejected') {
+      const { error } = await supabase.from('payments').update({
+        amount: scheme.monthly_amount,
+        gold_rate: currentGoldRate,
+        gold_amount: goldAmt,
+        status: 'pending_approval',
+        payment_method: paymentMethod,
+        screenshot_url: screenshot_url || existingPayment.screenshot_url
+      }).eq('id', existingPayment.id);
+      submitError = error;
+    } else {
+      const { error } = await supabase.from('payments').insert([{ 
+        scheme_id: scheme.id, 
+        user_id: user.id, 
+        month_number: selectedMonth, 
+        amount: scheme.monthly_amount,
+        gold_rate: currentGoldRate,
+        gold_amount: goldAmt,
+        status: 'pending_approval',
+        payment_method: paymentMethod,
+        screenshot_url: screenshot_url
+      }]);
+      submitError = error;
+    }
+
+    if (submitError) alert('Error submitting payment: ' + submitError.message);
     else {
       setPaymentSuccess(true);
       fetchData();
