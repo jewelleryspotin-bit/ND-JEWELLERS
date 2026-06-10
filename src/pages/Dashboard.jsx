@@ -288,7 +288,7 @@ export default function Dashboard() {
                     transition: 'var(--transition-smooth)'
                   }}
                 >
-                  Scheme {index + 1} (₹{s.monthly_amount})
+                  A/C {index + 1} (₹{s.monthly_amount})
                 </button>
               );
             })}
