@@ -8,6 +8,7 @@ export default function Dashboard() {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [storeUpi, setStoreUpi] = useState('admin@upi');
+  const [currentGoldRate, setCurrentGoldRate] = useState(0);
   
   // Payment Modal State
   const [showModal, setShowModal] = useState(false);
@@ -38,6 +39,10 @@ export default function Dashboard() {
     // Fetch store UPI settings
     const { data: settings } = await supabase.from('store_settings').select('upi_id').eq('id', 1).single();
     if (settings) setStoreUpi(settings.upi_id);
+
+    // Fetch gold rates for 22K
+    const { data: ratesData } = await supabase.from('nd_rates').select('gold22k').eq('id', 1).single();
+    if (ratesData) setCurrentGoldRate(ratesData.gold22k);
 
     // Fetch active scheme
     const { data: schemeData } = await supabase.from('harvest_schemes').select('*').eq('user_id', userId).eq('status', 'active').single();
@@ -104,11 +109,15 @@ export default function Dashboard() {
       screenshot_url = data.publicUrl;
     }
 
+    const goldAmt = currentGoldRate > 0 ? parseFloat((scheme.monthly_amount / currentGoldRate).toFixed(4)) : 0;
+
     const { error } = await supabase.from('payments').insert([{ 
       scheme_id: scheme.id, 
       user_id: user.id, 
       month_number: selectedMonth, 
       amount: scheme.monthly_amount,
+      gold_rate: currentGoldRate,
+      gold_amount: goldAmt,
       status: 'pending_approval',
       payment_method: paymentMethod,
       screenshot_url: screenshot_url
@@ -172,6 +181,12 @@ export default function Dashboard() {
                 <p style={{ color: '#888', fontSize: '0.9rem' }}>Monthly Installment</p>
                 <p style={{ color: '#fff', fontSize: '1.5rem', fontWeight: 'bold' }}>₹{scheme.monthly_amount}</p>
               </div>
+              <div style={{ textAlign: 'right' }}>
+                <p style={{ color: '#888', fontSize: '0.9rem' }}>Total Gold Saved</p>
+                <p style={{ color: 'var(--royal-gold)', fontSize: '1.5rem', fontWeight: 'bold' }}>
+                  {payments.filter(p => p.status === 'approved').reduce((sum, p) => sum + (p.gold_amount || 0), 0).toFixed(4)}g
+                </p>
+              </div>
             </div>
             
             <h4 style={{ color: 'var(--royal-gold)', marginBottom: '20px', fontSize: '1.2rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Payment Schedule</h4>
@@ -204,7 +219,15 @@ export default function Dashboard() {
                         Pay Now
                       </button>
                     ) : (
-                      <div style={{ fontSize: '0.8rem', color: '#666' }}>{new Date(payment.payment_date).toLocaleDateString()}</div>
+                      <div style={{ fontSize: '0.8rem', color: '#666' }}>
+                        <div>{new Date(payment.payment_date).toLocaleDateString()}</div>
+                        {payment.gold_amount > 0 && (
+                          <div style={{ marginTop: '6px', color: 'var(--royal-gold)', fontWeight: 'bold', fontSize: '0.9rem' }}>
+                            +{payment.gold_amount}g
+                            <div style={{ fontSize: '0.7rem', color: '#888', fontWeight: 'normal' }}>@ ₹{payment.gold_rate}/g</div>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 );
@@ -234,6 +257,12 @@ export default function Dashboard() {
             {!paymentSuccess ? (
               <>
                 <p style={{ color: '#ccc', marginBottom: '20px' }}>You are paying <strong>₹{scheme.monthly_amount}</strong> for <strong>Month {selectedMonth}</strong>.</p>
+                {currentGoldRate > 0 && (
+                  <div style={{ background: 'rgba(184,146,58,0.1)', border: '1px solid var(--royal-gold)', padding: '10px', borderRadius: '4px', marginBottom: '20px', color: '#fff', fontSize: '0.9rem', textAlign: 'center' }}>
+                    Current 22K Gold Rate: <strong>₹{currentGoldRate}/g</strong><br/>
+                    Approx. Gold to be added: <strong style={{ color: 'var(--royal-gold)', fontSize: '1.1rem' }}>{(scheme.monthly_amount / currentGoldRate).toFixed(4)}g</strong>
+                  </div>
+                )}
                 
                 <form onSubmit={submitPayment}>
                   <div style={{ marginBottom: '20px' }}>
