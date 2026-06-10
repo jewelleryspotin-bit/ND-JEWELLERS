@@ -377,23 +377,33 @@ export default function AdminDashboard() {
             </div>
 
             {/* Print Header */}
-            <div style={{ textAlign: 'center', marginBottom: '40px', borderBottom: '2px solid #000', paddingBottom: '20px' }} className="print-border">
-              <h1 className="print-text" style={{ fontFamily: '"Playfair Display", serif', margin: '0 0 10px', fontSize: '2rem' }}>ND JEWELLERS</h1>
-              <h3 className="print-text" style={{ margin: 0, textTransform: 'uppercase', letterSpacing: '2px', color: '#555' }}>Customer Harvest Ledger</h3>
-            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #000', paddingBottom: '20px', marginBottom: '30px' }} className="print-border">
+              
+              {/* Left Column: Shop Details */}
+              <div style={{ flex: 1, textAlign: 'left' }}>
+                <h4 className="print-text" style={{ margin: '0 0 5px', color: '#555', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px' }}>Shop Details</h4>
+                <p className="print-text" style={{ margin: '0 0 3px', fontSize: '0.9rem', fontWeight: 'bold' }}>[Your Shop Address Here]</p>
+                <p className="print-text" style={{ margin: '0 0 3px', fontSize: '0.85rem' }}>Phone: [Contact Numbers]</p>
+                <p className="print-text" style={{ margin: '0 0 3px', fontSize: '0.85rem' }}>Email: [Email Address]</p>
+                <p className="print-text" style={{ margin: '0 0 3px', fontSize: '0.85rem', fontWeight: 'bold' }}>GSTIN: [Your GST Number]</p>
+              </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '30px', flexWrap: 'wrap', gap: '20px' }}>
-              <div>
-                <p className="print-text" style={{ margin: '0 0 5px', color: '#555' }}>Customer Name:</p>
-                <h3 className="print-text" style={{ margin: 0, fontSize: '1.4rem' }}>{selectedLedger.custom_users?.full_name || 'N/A'}</h3>
-                <p className="print-text" style={{ margin: '5px 0 0', color: '#555' }}>Phone: {selectedLedger.custom_users?.phone_number || 'N/A'}</p>
+              {/* Middle Column: Brand Logo/Name */}
+              <div style={{ flex: 1, textAlign: 'center' }}>
+                <h1 className="print-text" style={{ fontFamily: '"Playfair Display", serif', margin: '0 0 5px', fontSize: '2.2rem' }}>ND JEWELLERS</h1>
+                <h3 className="print-text" style={{ margin: 0, textTransform: 'uppercase', letterSpacing: '3px', color: '#333', fontSize: '0.9rem' }}>Official Customer Ledger</h3>
               </div>
-              <div style={{ textAlign: 'right' }}>
-                <p className="print-text" style={{ margin: '0 0 5px', color: '#555' }}>Scheme Started:</p>
-                <h4 className="print-text" style={{ margin: 0 }}>{new Date(selectedLedger.start_date).toLocaleDateString()}</h4>
-                <p className="print-text" style={{ margin: '5px 0 0', color: '#555' }}>Monthly EMI: <strong>₹{selectedLedger.monthly_amount}</strong></p>
-                <p className="print-text" style={{ margin: '5px 0 0', color: '#555' }}>Today's Date: <strong>{new Date().toLocaleDateString()}</strong></p>
+
+              {/* Right Column: Customer Details */}
+              <div style={{ flex: 1, textAlign: 'right' }}>
+                <h4 className="print-text" style={{ margin: '0 0 5px', color: '#555', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px' }}>Customer A/C Details</h4>
+                <h3 className="print-text" style={{ margin: '0 0 5px', fontSize: '1.2rem', textTransform: 'uppercase' }}>{selectedLedger.custom_users?.full_name || 'N/A'}</h3>
+                <p className="print-text" style={{ margin: '0 0 3px', fontSize: '0.85rem' }}>Phone: {selectedLedger.custom_users?.phone_number || 'N/A'}</p>
+                <p className="print-text" style={{ margin: '0 0 3px', fontSize: '0.85rem', fontWeight: 'bold' }}>A/C Started: {new Date(selectedLedger.start_date).toLocaleDateString()}</p>
+                <p className="print-text" style={{ margin: '0 0 3px', fontSize: '0.85rem' }}>EMI Amount: <strong>₹{selectedLedger.monthly_amount}</strong></p>
+                <p className="print-text" style={{ margin: '0 0 3px', fontSize: '0.85rem', color: '#666' }}>Date of Print: {new Date().toLocaleDateString()}</p>
               </div>
+
             </div>
 
             <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '30px' }}>
