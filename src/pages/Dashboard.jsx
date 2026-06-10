@@ -4,7 +4,8 @@ import { useNavigate } from 'react-router-dom';
 
 export default function Dashboard() {
   const [user, setUser] = useState(null);
-  const [scheme, setScheme] = useState(null);
+  const [schemes, setSchemes] = useState([]);
+  const [activeTabId, setActiveTabId] = useState('new');
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [storeUpi, setStoreUpi] = useState('admin@upi');
@@ -44,13 +45,25 @@ export default function Dashboard() {
     const { data: ratesData } = await supabase.from('nd_rates').select('gold22k').eq('id', 1).single();
     if (ratesData) setCurrentGoldRate(ratesData.gold22k);
 
-    // Fetch active scheme
-    const { data: schemeData } = await supabase.from('harvest_schemes').select('*').eq('user_id', userId).eq('status', 'active').single();
+    // Fetch active schemes
+    const { data: schemesData } = await supabase.from('harvest_schemes').select('*').eq('user_id', userId).eq('status', 'active').order('created_at', { ascending: true });
 
-    if (schemeData) {
-      setScheme(schemeData);
-      const { data: paymentsData } = await supabase.from('payments').select('*').eq('scheme_id', schemeData.id).order('month_number', { ascending: true });
+    if (schemesData && schemesData.length > 0) {
+      setSchemes(schemesData);
+      
+      const schemeIds = schemesData.map(s => s.id);
+      const { data: paymentsData } = await supabase.from('payments').select('*').in('scheme_id', schemeIds).order('month_number', { ascending: true });
       setPayments(paymentsData || []);
+
+      if (activeTabId === 'new' && schemesData.length > 0) {
+        setActiveTabId(schemesData[0].id);
+      } else if (activeTabId !== 'new') {
+        const stillExists = schemesData.find(s => s.id === activeTabId);
+        if (!stillExists) setActiveTabId(schemesData[0].id);
+      }
+    } else {
+      setSchemes([]);
+      setActiveTabId('new');
     }
     setLoading(false);
   };
@@ -64,9 +77,13 @@ export default function Dashboard() {
   const startScheme = async (e) => {
     e.preventDefault();
     const amount = e.target.amount.value;
-    const { error } = await supabase.from('harvest_schemes').insert([{ user_id: user.id, monthly_amount: amount, status: 'active' }]).select().single();
-    if (error) alert('Error starting scheme: ' + error.message);
-    else fetchData();
+    const { data, error } = await supabase.from('harvest_schemes').insert([{ user_id: user.id, monthly_amount: amount, status: 'active' }]).select().single();
+    if (error) {
+      alert('Error starting scheme: ' + error.message);
+    } else {
+      setActiveTabId(data.id);
+      fetchData();
+    }
   };
 
   const openPaymentModal = (monthNumber) => {
@@ -81,6 +98,9 @@ export default function Dashboard() {
     e.preventDefault();
     setUploading(true);
 
+    const activeScheme = schemes.find(s => s.id === activeTabId);
+    if (!activeScheme) return;
+
     let screenshot_url = null;
 
     if (paymentMethod === 'UPI') {
@@ -91,7 +111,7 @@ export default function Dashboard() {
       }
       
       const fileExt = screenshotFile.name.split('.').pop();
-      const fileName = `${user.id}-${selectedMonth}-${Date.now()}.${fileExt}`;
+      const fileName = `${user.id}-${activeScheme.id}-${selectedMonth}-${Date.now()}.${fileExt}`;
       const filePath = `${fileName}`;
 
       const { error: uploadError } = await supabase.storage
@@ -109,14 +129,14 @@ export default function Dashboard() {
       screenshot_url = data.publicUrl;
     }
 
-    const goldAmt = currentGoldRate > 0 ? parseFloat((scheme.monthly_amount / currentGoldRate).toFixed(4)) : 0;
+    const goldAmt = currentGoldRate > 0 ? parseFloat((activeScheme.monthly_amount / currentGoldRate).toFixed(4)) : 0;
 
-    const existingPayment = payments.find(p => p.month_number === selectedMonth);
+    const existingPayment = payments.find(p => p.scheme_id === activeScheme.id && p.month_number === selectedMonth);
     let submitError;
 
     if (existingPayment && existingPayment.status === 'rejected') {
       const { error } = await supabase.from('payments').update({
-        amount: scheme.monthly_amount,
+        amount: activeScheme.monthly_amount,
         gold_rate: currentGoldRate,
         gold_amount: goldAmt,
         status: 'pending_approval',
@@ -126,10 +146,10 @@ export default function Dashboard() {
       submitError = error;
     } else {
       const { error } = await supabase.from('payments').insert([{ 
-        scheme_id: scheme.id, 
+        scheme_id: activeScheme.id, 
         user_id: user.id, 
         month_number: selectedMonth, 
-        amount: scheme.monthly_amount,
+        amount: activeScheme.monthly_amount,
         gold_rate: currentGoldRate,
         gold_amount: goldAmt,
         status: 'pending_approval',
@@ -147,12 +167,15 @@ export default function Dashboard() {
     setUploading(false);
   };
 
+  const activeScheme = schemes.find(s => s.id === activeTabId);
+  const schemePayments = payments.filter(p => p.scheme_id === activeTabId);
+
   if (loading) return <div style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'var(--ivory-bg)', color: 'var(--royal-gold)' }}>Loading Dashboard...</div>;
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--ivory-bg)', color: 'var(--text-dark)', padding: '60px 20px', fontFamily: 'var(--font-sans)', overflowX: 'hidden', position: 'relative' }}>
       
-      {/* Background Sunburst Pattern matching home page */}
+      {/* Background Sunburst Pattern */}
       <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle, rgba(184, 146, 58, 0.05) 0%, transparent 65%), repeating-conic-gradient(from 0deg, transparent 0deg 10deg, rgba(184, 146, 58, 0.01) 10deg 20deg)', pointerEvents: 'none', zIndex: 0 }}></div>
 
       <style>{`
@@ -216,24 +239,82 @@ export default function Dashboard() {
           transform: skewX(-20deg);
           animation: shimmerLight 4s infinite linear;
         }
+
+        /* Hide scrollbar for tabs */
+        .tabs-container::-webkit-scrollbar {
+          height: 6px;
+        }
+        .tabs-container::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .tabs-container::-webkit-scrollbar-thumb {
+          background: var(--royal-gold-border);
+          border-radius: 10px;
+        }
       `}</style>
 
       <div style={{ maxWidth: '1100px', margin: '0 auto', position: 'relative', zIndex: 2 }}>
         
         {/* Header */}
-        <div style={{ textAlign: 'center', marginBottom: '60px', animation: 'fadeIn 0.8s ease-out' }}>
+        <div style={{ textAlign: 'center', marginBottom: '40px', animation: 'fadeIn 0.8s ease-out' }}>
           <h1 style={{ fontSize: '3rem', letterSpacing: '3px', textTransform: 'uppercase', margin: '0 0 10px 0', fontFamily: 'var(--font-serif)', color: 'var(--burgundy)' }}>
             Digital Gold Harvest
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', letterSpacing: '1px' }}>
             Welcome back, <span style={{ color: 'var(--text-dark)', fontWeight: 'bold' }}>{user?.full_name || 'Customer'}</span>
           </p>
-          <div style={{ width: '80px', height: '2px', background: 'linear-gradient(90deg, transparent, var(--royal-gold), transparent)', margin: '25px auto 0' }} />
         </div>
+
+        {/* Dynamic Scheme Tabs */}
+        {(schemes.length > 0 || activeTabId === 'new') && (
+          <div className="tabs-container" style={{ display: 'flex', gap: '15px', overflowX: 'auto', marginBottom: '40px', paddingBottom: '15px', justifyContent: schemes.length > 0 ? 'flex-start' : 'center' }}>
+            {schemes.map((s, index) => {
+              const isActive = activeTabId === s.id;
+              return (
+                <button 
+                  key={s.id}
+                  onClick={() => setActiveTabId(s.id)}
+                  style={{
+                    padding: '12px 28px',
+                    borderRadius: '30px',
+                    fontSize: '0.95rem',
+                    fontWeight: 'bold',
+                    whiteSpace: 'nowrap',
+                    cursor: 'pointer',
+                    border: `1.5px solid ${isActive ? 'var(--royal-gold)' : 'var(--royal-gold-border)'}`,
+                    background: isActive ? 'var(--royal-gold)' : 'var(--pristine-white)',
+                    color: isActive ? 'var(--pristine-white)' : 'var(--burgundy)',
+                    boxShadow: isActive ? 'var(--box-shadow-gold)' : 'var(--box-shadow-luxury)',
+                    transition: 'var(--transition-smooth)'
+                  }}
+                >
+                  Scheme {index + 1} (₹{s.monthly_amount})
+                </button>
+              );
+            })}
+            <button 
+              onClick={() => setActiveTabId('new')}
+              style={{
+                padding: '12px 28px',
+                borderRadius: '30px',
+                fontSize: '0.95rem',
+                fontWeight: 'bold',
+                whiteSpace: 'nowrap',
+                cursor: 'pointer',
+                border: '1.5px dashed var(--royal-gold)',
+                background: activeTabId === 'new' ? 'var(--royal-gold-light)' : 'transparent',
+                color: 'var(--burgundy)',
+                transition: 'var(--transition-smooth)'
+              }}
+            >
+              + Start Another Scheme
+            </button>
+          </div>
+        )}
         
-        {!scheme ? (
-          <div className="ivory-card" style={{ padding: '60px 40px', textAlign: 'center', maxWidth: '600px', margin: '0 auto', animation: 'fadeIn 1s ease-out 0.2s both' }}>
-            <h3 style={{ color: 'var(--burgundy)', fontSize: '2rem', fontFamily: 'var(--font-serif)', marginBottom: '15px' }}>Start Your Journey</h3>
+        {activeTabId === 'new' ? (
+          <div className="ivory-card" style={{ padding: '60px 40px', textAlign: 'center', maxWidth: '600px', margin: '0 auto', animation: 'fadeIn 0.5s ease-out both' }}>
+            <h3 style={{ color: 'var(--burgundy)', fontSize: '2rem', fontFamily: 'var(--font-serif)', marginBottom: '15px' }}>Start a New Journey</h3>
             <p style={{ color: 'var(--text-muted)', margin: '0 0 40px', fontSize: '1.1rem', lineHeight: '1.6' }}>
               Invest securely for 11 months, and receive the <strong style={{ color: 'var(--royal-gold)' }}>12th month as a BONUS</strong> from ND Jewellers.
             </p>
@@ -254,26 +335,26 @@ export default function Dashboard() {
               </button>
             </form>
           </div>
-        ) : (
-          <div style={{ animation: 'fadeIn 1s ease-out' }}>
+        ) : activeScheme ? (
+          <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
             
             {/* Top Dashboard Stats Card */}
             <div className="ivory-card" style={{ padding: '40px', marginBottom: '50px', position: 'relative', overflow: 'hidden', backgroundImage: 'radial-gradient(var(--royal-gold-light) 1px, transparent 1px)', backgroundSize: '20px 20px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '30px', position: 'relative', zIndex: 2 }}>
                 <div>
                   <h3 style={{ color: 'var(--burgundy)', fontFamily: 'var(--font-serif)', fontSize: '1.8rem', margin: '0 0 8px 0' }}>Active Harvest Scheme</h3>
-                  <p style={{ color: 'var(--text-muted)', margin: 0, letterSpacing: '1px', fontSize: '0.9rem', fontWeight: 'bold' }}>STARTED: <span style={{ color: 'var(--text-dark)' }}>{new Date(scheme.start_date).toLocaleDateString()}</span></p>
+                  <p style={{ color: 'var(--text-muted)', margin: 0, letterSpacing: '1px', fontSize: '0.9rem', fontWeight: 'bold' }}>STARTED: <span style={{ color: 'var(--text-dark)' }}>{new Date(activeScheme.start_date).toLocaleDateString()}</span></p>
                 </div>
                 <div style={{ display: 'flex', gap: '40px', flexWrap: 'wrap' }}>
                   <div style={{ textAlign: 'right' }}>
                     <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '2px', margin: '0 0 5px 0', fontWeight: 'bold' }}>Monthly Installment</p>
-                    <p style={{ color: 'var(--text-dark)', fontSize: '2rem', fontWeight: 'bold', margin: 0, fontFamily: 'var(--font-serif)' }}>₹{scheme.monthly_amount}</p>
+                    <p style={{ color: 'var(--text-dark)', fontSize: '2rem', fontWeight: 'bold', margin: 0, fontFamily: 'var(--font-serif)' }}>₹{activeScheme.monthly_amount}</p>
                   </div>
                   <div style={{ width: '1px', background: 'var(--royal-gold-border)' }}></div>
                   <div style={{ textAlign: 'right' }}>
                     <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '2px', margin: '0 0 5px 0', fontWeight: 'bold' }}>Total Gold Secured</p>
                     <p style={{ color: 'var(--royal-gold)', fontSize: '2.5rem', fontWeight: 'bold', margin: 0, fontFamily: 'var(--font-serif)' }}>
-                      {payments.filter(p => p.status === 'approved').reduce((sum, p) => sum + (p.gold_amount || 0), 0).toFixed(4)}<span style={{ fontSize: '1.2rem' }}>g</span>
+                      {schemePayments.filter(p => p.status === 'approved').reduce((sum, p) => sum + (p.gold_amount || 0), 0).toFixed(4)}<span style={{ fontSize: '1.2rem' }}>g</span>
                     </p>
                   </div>
                 </div>
@@ -290,7 +371,7 @@ export default function Dashboard() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '25px' }}>
               {[...Array(11)].map((_, i) => {
                 const monthNum = i + 1;
-                const payment = payments.find(p => p.month_number === monthNum);
+                const payment = schemePayments.find(p => p.month_number === monthNum);
                 
                 let isApproved = payment?.status === 'approved';
                 let isPending = payment?.status === 'pending_approval';
@@ -323,7 +404,7 @@ export default function Dashboard() {
                     
                     {!payment || isRejected ? (
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', marginTop: '15px' }}>
-                        <div style={{ fontSize: '1.6rem', color: 'var(--text-dark)', fontFamily: 'var(--font-serif)', fontWeight: 'bold' }}>₹{scheme.monthly_amount}</div>
+                        <div style={{ fontSize: '1.6rem', color: 'var(--text-dark)', fontFamily: 'var(--font-serif)', fontWeight: 'bold' }}>₹{activeScheme.monthly_amount}</div>
                         {isRejected && <div style={{ color: '#dc3545', fontSize: '0.8rem', fontWeight: 'bold' }}>Payment Failed</div>}
                         <button 
                           onClick={() => openPaymentModal(monthNum)}
@@ -363,11 +444,11 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* Payment Modal */}
-      {showModal && (
+      {showModal && activeScheme && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(42, 37, 32, 0.6)', backdropFilter: 'blur(8px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', animation: 'fadeIn 0.3s ease-out' }}>
           <div className="ivory-card" style={{ padding: '40px', width: '100%', maxWidth: '500px', border: '1.5px solid var(--royal-gold)', position: 'relative' }}>
             <button onClick={() => setShowModal(false)} style={{ position: 'absolute', top: '20px', right: '20px', background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.8rem', transition: 'color 0.3s' }} onMouseOver={(e) => e.target.style.color = 'var(--burgundy)'} onMouseOut={(e) => e.target.style.color = 'var(--text-muted)'}>&times;</button>
@@ -380,7 +461,7 @@ export default function Dashboard() {
               <>
                 <div style={{ background: 'var(--ivory-cards)', borderRadius: '8px', padding: '20px', marginBottom: '25px', textAlign: 'center', border: '1px solid var(--royal-gold-light)' }}>
                   <p style={{ color: 'var(--text-muted)', margin: '0 0 10px', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 'bold' }}>Installment Month {selectedMonth}</p>
-                  <div style={{ fontSize: '2.5rem', color: 'var(--text-dark)', fontFamily: 'var(--font-serif)', marginBottom: '15px', fontWeight: 'bold' }}>₹{scheme.monthly_amount}</div>
+                  <div style={{ fontSize: '2.5rem', color: 'var(--text-dark)', fontFamily: 'var(--font-serif)', marginBottom: '15px', fontWeight: 'bold' }}>₹{activeScheme.monthly_amount}</div>
                   
                   {currentGoldRate > 0 && (
                     <div style={{ borderTop: '1px solid var(--royal-gold-border)', paddingTop: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -390,7 +471,7 @@ export default function Dashboard() {
                       </div>
                       <div style={{ textAlign: 'right' }}>
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 'bold' }}>Securing Approx.</div>
-                        <div style={{ color: 'var(--burgundy)', fontWeight: 'bold', fontSize: '1.1rem' }}>{(scheme.monthly_amount / currentGoldRate).toFixed(4)}g</div>
+                        <div style={{ color: 'var(--burgundy)', fontWeight: 'bold', fontSize: '1.1rem' }}>{(activeScheme.monthly_amount / currentGoldRate).toFixed(4)}g</div>
                       </div>
                     </div>
                   )}
@@ -465,7 +546,7 @@ export default function Dashboard() {
                 <p style={{ color: 'var(--text-muted)', marginBottom: '40px', lineHeight: '1.5', fontWeight: '500' }}>Your request has been securely sent. It is currently pending admin verification.</p>
                 
                 <a 
-                  href={`https://wa.me/910000000000?text=${encodeURIComponent(`Hello ND JEWELLERS! I have just paid my EMI of ₹${scheme.monthly_amount} for Month ${selectedMonth}. My registered phone number is ${user.phone_number}. Please approve my payment.`)}`}
+                  href={`https://wa.me/910000000000?text=${encodeURIComponent(`Hello ND JEWELLERS! I have just paid my EMI of ₹${activeScheme.monthly_amount} for Month ${selectedMonth} (Scheme ID: ${activeScheme.id}). My registered phone number is ${user.phone_number}. Please approve my payment.`)}`}
                   target="_blank"
                   rel="noreferrer"
                   onClick={() => setShowModal(false)}
