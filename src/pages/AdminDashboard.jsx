@@ -26,8 +26,8 @@ export default function AdminDashboard() {
 
   const handleLogin = (e) => {
     e.preventDefault();
-    const envPasscode = import.meta.env.VITE_ADMIN_PASSCODE || 'hardik@12';
-    if (passcode === envPasscode || passcode === 'hardik@12') {
+    const envPasscode = import.meta.env.VITE_ADMIN_PASSCODE || 'nd@12';
+    if (passcode === envPasscode || passcode === 'nd@12') {
       setIsAuthenticated(true);
     } else {
       alert('Invalid passcode');
