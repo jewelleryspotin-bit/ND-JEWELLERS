@@ -9,6 +9,7 @@ export default function AdminDashboard() {
   const [storeUpi, setStoreUpi] = useState('');
   const [updatingUpi, setUpdatingUpi] = useState(false);
   const [qrUploading, setQrUploading] = useState(false);
+  const [currentGoldRate, setCurrentGoldRate] = useState(0);
 
   // Manual Entry State
   const [usersList, setUsersList] = useState([]);
@@ -39,6 +40,10 @@ export default function AdminDashboard() {
     // Fetch UPI settings
     const { data: settings } = await supabase.from('store_settings').select('upi_id').eq('id', 1).single();
     if (settings) setStoreUpi(settings.upi_id);
+
+    // Fetch gold rate
+    const { data: ratesData } = await supabase.from('nd_rates').select('gold22k').eq('id', 1).single();
+    if (ratesData) setCurrentGoldRate(ratesData.gold22k);
 
     // Fetch payments
     const { data, error } = await supabase
@@ -107,11 +112,15 @@ export default function AdminDashboard() {
       return;
     }
 
+    const goldAmt = currentGoldRate > 0 ? parseFloat((parseFloat(manualAmount) / currentGoldRate).toFixed(4)) : 0;
+
     const { error } = await supabase.from('payments').insert([{
       scheme_id: scheme.id,
       user_id: manualUser,
       month_number: parseInt(manualMonth),
       amount: parseFloat(manualAmount),
+      gold_rate: currentGoldRate,
+      gold_amount: goldAmt,
       status: 'approved',
       payment_method: manualMethod
     }]);
@@ -263,7 +272,12 @@ export default function AdminDashboard() {
                     <td style={{ padding: '15px 10px' }}>{payment.custom_users?.phone_number || '-'}</td>
                     <td style={{ padding: '15px 10px' }}>
                       Month {payment.month_number} <br/>
-                      <span style={{ color: 'var(--royal-gold)' }}>₹{payment.amount}</span>
+                      <span style={{ color: 'var(--royal-gold)', fontWeight: 'bold' }}>₹{payment.amount}</span>
+                      {payment.gold_amount > 0 && (
+                        <div style={{ fontSize: '0.8rem', color: '#aaa', marginTop: '4px' }}>
+                          +{payment.gold_amount}g <span style={{ fontSize: '0.7rem' }}>@ ₹{payment.gold_rate}</span>
+                        </div>
+                      )}
                     </td>
                     <td style={{ padding: '15px 10px' }}>
                       <div style={{ fontWeight: 'bold' }}>{payment.payment_method || 'Unknown'}</div>
