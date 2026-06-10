@@ -310,8 +310,8 @@ export default function Home() {
   // Admin login and update logic
   const handleAdminLogin = (e) => {
     e.preventDefault();
-    const envPasscode = import.meta.env.VITE_ADMIN_PASSCODE || 'hardik@12';
-    if (passcode === envPasscode || passcode === 'hardik@12') {
+    const envPasscode = import.meta.env.VITE_ADMIN_PASSCODE || 'nd@12';
+    if (passcode === envPasscode || passcode === 'nd@12') {
       setIsAuthed(true);
       setErrorMsg('');
       setTemp24k(goldRates.gold24k);
@@ -416,7 +416,7 @@ export default function Home() {
               src="/assets/logo.png" 
               alt="ND JEWELLERS Logo" 
               className="brand-logo-img" 
-              style={{ width: '48px', height: 'auto', objectFit: 'contain' }}
+              style={{ width: '67px', height: 'auto', objectFit: 'contain' }}
             />
             <div className="brand-text-container">
               <span className="brand-name">ND JEWELLERS</span>
@@ -1029,7 +1029,7 @@ export default function Home() {
             <img 
               src="/assets/logo.png" 
               alt="ND JEWELLERS Logo" 
-              style={{ width: '80px', height: 'auto', objectFit: 'contain' }}
+              style={{ width: '112px', height: 'auto', objectFit: 'contain' }}
             />
             <span className="footer-brand-title">ND JEWELLERS</span>
             <span className="footer-brand-sub">KOLKATA</span>
