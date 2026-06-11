@@ -382,10 +382,9 @@ export default function AdminDashboard() {
               {/* Left Column: Shop Details */}
               <div style={{ flex: 1, textAlign: 'left' }}>
                 <h4 className="print-text" style={{ margin: '0 0 5px', color: '#555', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px' }}>Shop Details</h4>
-                <p className="print-text" style={{ margin: '0 0 3px', fontSize: '0.9rem', fontWeight: 'bold' }}>[Your Shop Address Here]</p>
-                <p className="print-text" style={{ margin: '0 0 3px', fontSize: '0.85rem' }}>Phone: [Contact Numbers]</p>
-                <p className="print-text" style={{ margin: '0 0 3px', fontSize: '0.85rem' }}>Email: [Email Address]</p>
-                <p className="print-text" style={{ margin: '0 0 3px', fontSize: '0.85rem', fontWeight: 'bold' }}>GSTIN: [Your GST Number]</p>
+                <p className="print-text" style={{ margin: '0 0 3px', fontSize: '0.9rem', fontWeight: 'bold' }}>ND Jewellers</p>
+                <p className="print-text" style={{ margin: '0 0 3px', fontSize: '0.85rem' }}>441, Rabindra Sarani, Sovabazar<br/>Beniatola, Kolkata, West Bengal 700005</p>
+                <p className="print-text" style={{ margin: '0 0 3px', fontSize: '0.85rem' }}>Phone: +91 62906 79911</p>
               </div>
 
               {/* Middle Column: Brand Logo/Name */}
