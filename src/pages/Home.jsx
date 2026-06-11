@@ -12,7 +12,7 @@ const bannerImages = [
   {
     url: '/assets/ZIPMODELS/whatsapp-image-2026-05-25-at-4.50.46-pm.jpeg',
     pre: 'ND JEWELLERS',
-    presents: 'PRSENTS',
+    presents: 'PRESENTS',
     line1: 'A',
     line2: 'Lifetime',
     line3: 'OF',
@@ -22,7 +22,7 @@ const bannerImages = [
   {
     url: '/assets/ZIPMODELS/whatsapp-image-2026-05-25-at-4.50.46-pm-1.jpeg',
     pre: 'ND JEWELLERS',
-    presents: 'PRSENTS',
+    presents: 'PRESENTS',
     line1: 'THE',
     line2: 'Bridal',
     line3: 'OF',
@@ -32,7 +32,7 @@ const bannerImages = [
   {
     url: '/assets/ZIPMODELS/whatsapp-image-2026-05-25-at-4.50.47-pm.jpeg',
     pre: 'ND JEWELLERS',
-    presents: 'PRSENTS',
+    presents: 'PRESENTS',
     line1: 'AN',
     line2: 'Eternal',
     line3: 'OF',
@@ -42,7 +42,7 @@ const bannerImages = [
   {
     url: '/assets/ZIPMODELS/whatsapp-image-2026-05-25-at-4.50.47-pm-1.jpeg',
     pre: 'ND JEWELLERS',
-    presents: 'PRSENTS',
+    presents: 'PRESENTS',
     line1: 'THE',
     line2: 'Royal',
     line3: 'OF',
